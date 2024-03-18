@@ -10,7 +10,7 @@ metadata:
   name: api-configmap
   namespace: simple-chat-namespace
 data:
-  MONGO_URI: "mongodb://mongodb:27017/mychatdb"
+  MONGO_URI: "mongodb://mongodb-svc:27017/mychatdb"
 
 ---
 apiVersion: apps/v1
@@ -57,6 +57,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: simple-chat-api-dpl
+  namespace: simple-chat-namespace
 spec:
   selector:
     matchLabels:
@@ -67,7 +68,7 @@ spec:
         app: simple-chat-api-dpl
     spec:
       containers:
-      - name: simple-chat-api-dpl
+      - name: simple-chat-api
         image: bestengineer/simple-chat:api
         resources:
           limits:
@@ -75,16 +76,62 @@ spec:
             cpu: "500m"
         ports:
         - containerPort: 8080
+        env:
+          - name: MONGO_URI
+            valueFrom:
+              configMapKeyRef: # configmap
+                name: api-configmap
+                key: MONGO_URI
 ---
 # api service
 apiVersion: v1
 kind: Service
 metadata:
   name: simple-chat-api-svc
+  namespace: simple-chat-namespace
 spec:
   selector:
     app: simple-chat-api-dpl
+  type: LoadBalancer
   ports:
   - port: 8080
     targetPort: 8080
 ---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-chat-web-dpl
+  namespace: simple-chat-namespace
+spec:
+  selector:
+    matchLabels:
+      app: simple-chat-web-dpl
+  template:
+    metadata:
+      labels:
+        app: simple-chat-web-dpl
+    spec:
+      containers:
+      - name: simple-chat-web
+        image: bestengineer/simple-chat:web
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 3000
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-chat-web-svc
+  namespace: simple-chat-namespace
+spec:
+  selector:
+    app: simple-chat-web-dpl
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
