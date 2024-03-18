@@ -1,0 +1,90 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: simple-chat-namespace
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-configmap
+  namespace: simple-chat-namespace
+data:
+  MONGO_URI: "mongodb://mongodb:27017/mychatdb"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb-dpl
+  namespace: simple-chat-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb-dpl
+  template:
+    metadata:
+      labels:
+        app: mongodb-dpl
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "1"
+        ports:
+        - containerPort: 27017
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-svc
+  namespace: simple-chat-namespace
+spec:
+  selector:
+    app: mongodb-dpl
+  ports:
+  - port: 27017
+    targetPort: 27017
+---
+
+# api deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-chat-api-dpl
+spec:
+  selector:
+    matchLabels:
+      app: simple-chat-api-dpl
+  template:
+    metadata:
+      labels:
+        app: simple-chat-api-dpl
+    spec:
+      containers:
+      - name: simple-chat-api-dpl
+        image: bestengineer/simple-chat:api
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8080
+---
+# api service
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-chat-api-svc
+spec:
+  selector:
+    app: simple-chat-api-dpl
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
